@@ -1,0 +1,319 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "IP Source Tracker API",
+    "description": "API to track and verify incoming requests from Infor MT AWS NAT IPs (EU-Central-1 Frankfurt)",
+    "version": "1.0.0",
+    "contact": {
+      "name": "IP Source Tracker",
+      "url": "https://github.com/KaanKaraca93/IPFinder"
+    }
+  },
+  "host": "ipfinder-1441fde4a5a3.herokuapp.com",
+  "basePath": "/",
+  "schemes": ["https", "http"],
+  "tags": [
+    {
+      "name": "Tracking",
+      "description": "Request tracking endpoints"
+    },
+    {
+      "name": "Monitoring",
+      "description": "Logs and statistics"
+    }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "tags": ["Monitoring"],
+        "summary": "Service Information",
+        "description": "Get service status and available endpoints",
+        "responses": {
+          "200": {
+            "description": "Service status and available endpoints",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "example": "active"
+                },
+                "service": {
+                  "type": "string",
+                  "example": "IP Source Tracker"
+                },
+                "expected_nat_ips": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "example": ["52.58.37.0", "52.29.28.67", "18.197.50.73"]
+                },
+                "endpoints": {
+                  "type": "object",
+                  "properties": {
+                    "webhook": {
+                      "type": "string",
+                      "example": "/webhook (POST/GET/PUT/DELETE)"
+                    },
+                    "logs": {
+                      "type": "string",
+                      "example": "/logs"
+                    },
+                    "stats": {
+                      "type": "string",
+                      "example": "/stats"
+                    },
+                    "swagger": {
+                      "type": "string",
+                      "example": "/swagger/"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhook": {
+      "get": {
+        "tags": ["Tracking"],
+        "summary": "Webhook Endpoint - Track Incoming Requests",
+        "description": "Capture and log incoming requests, verify if IP matches expected NAT IPs",
+        "responses": {
+          "200": {
+            "description": "Request successfully logged",
+            "schema": {
+              "$ref": "#/definitions/WebhookResponse"
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Tracking"],
+        "summary": "Webhook Endpoint - Track Incoming Requests",
+        "description": "Capture and log incoming requests, verify if IP matches expected NAT IPs",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": false,
+            "description": "Optional request payload",
+            "schema": {
+              "type": "object"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request successfully logged",
+            "schema": {
+              "$ref": "#/definitions/WebhookResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Tracking"],
+        "summary": "Webhook Endpoint - Track Incoming Requests",
+        "description": "Capture and log incoming requests, verify if IP matches expected NAT IPs",
+        "responses": {
+          "200": {
+            "description": "Request successfully logged",
+            "schema": {
+              "$ref": "#/definitions/WebhookResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Tracking"],
+        "summary": "Webhook Endpoint - Track Incoming Requests",
+        "description": "Capture and log incoming requests, verify if IP matches expected NAT IPs",
+        "responses": {
+          "200": {
+            "description": "Request successfully logged",
+            "schema": {
+              "$ref": "#/definitions/WebhookResponse"
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Tracking"],
+        "summary": "Webhook Endpoint - Track Incoming Requests",
+        "description": "Capture and log incoming requests, verify if IP matches expected NAT IPs",
+        "responses": {
+          "200": {
+            "description": "Request successfully logged",
+            "schema": {
+              "$ref": "#/definitions/WebhookResponse"
+            }
+          }
+        }
+      }
+    },
+    "/logs": {
+      "get": {
+        "tags": ["Monitoring"],
+        "summary": "Get All Request Logs",
+        "description": "Retrieve all logged requests (newest first)",
+        "responses": {
+          "200": {
+            "description": "List of all logged requests",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "logs": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/LogEntry"
+                  }
+                },
+                "count": {
+                  "type": "integer",
+                  "example": 42
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stats": {
+      "get": {
+        "tags": ["Monitoring"],
+        "summary": "Get Statistics and Comparison",
+        "description": "Get detailed statistics and IP comparison analysis",
+        "responses": {
+          "200": {
+            "description": "Detailed statistics and IP comparison",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "total_requests": {
+                  "type": "integer",
+                  "example": 42,
+                  "description": "Total number of requests logged"
+                },
+                "expected_ip_requests": {
+                  "type": "integer",
+                  "example": 35,
+                  "description": "Requests from expected NAT IPs"
+                },
+                "unexpected_ip_requests": {
+                  "type": "integer",
+                  "example": 7,
+                  "description": "Requests from unexpected IPs"
+                },
+                "expected_nat_ips": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "example": ["52.58.37.0", "52.29.28.67", "18.197.50.73"],
+                  "description": "List of expected Infor MT NAT IPs"
+                },
+                "ip_distribution": {
+                  "type": "object",
+                  "example": {
+                    "52.58.37.0": 20,
+                    "52.29.28.67": 15,
+                    "192.168.1.1": 7
+                  },
+                  "description": "Request count per IP address"
+                },
+                "comparison": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "example": [
+                    "✓ 52.58.37.0: 20 requests (MATCHED)",
+                    "✓ 52.29.28.67: 15 requests (MATCHED)",
+                    "✗ 18.197.50.73: 0 requests (NOT SEEN YET)"
+                  ],
+                  "description": "Comparison of expected IPs vs actual requests"
+                },
+                "unexpected_ips": {
+                  "type": "object",
+                  "example": {
+                    "192.168.1.1": 7
+                  },
+                  "description": "Requests from IPs not in the expected list"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "WebhookResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true
+        },
+        "message": {
+          "type": "string",
+          "example": "VERIFIED: Request from expected NAT IP!"
+        },
+        "your_ip": {
+          "type": "string",
+          "example": "52.58.37.0"
+        },
+        "is_expected_nat_ip": {
+          "type": "boolean",
+          "example": true
+        },
+        "timestamp": {
+          "type": "string",
+          "example": "2026-01-19T12:34:56.789123"
+        },
+        "matched_ip": {
+          "type": "string",
+          "example": "52.58.37.0"
+        }
+      }
+    },
+    "LogEntry": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "example": "2026-01-19T12:34:56.789123"
+        },
+        "ip_address": {
+          "type": "string",
+          "example": "52.58.37.0"
+        },
+        "endpoint": {
+          "type": "string",
+          "example": "/webhook"
+        },
+        "method": {
+          "type": "string",
+          "example": "POST"
+        },
+        "is_expected_ip": {
+          "type": "boolean",
+          "example": true
+        },
+        "matched_nat_ip": {
+          "type": "string",
+          "example": "52.58.37.0"
+        },
+        "headers": {
+          "type": "object"
+        },
+        "data": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
