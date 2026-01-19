@@ -62,21 +62,54 @@ LOG_FILE = 'request_logs.json'
 
 def get_client_ip():
     """İstemcinin gerçek IP adresini al (proxy arkasında bile)"""
-    if request.headers.get('X-Forwarded-For'):
-        return request.headers.get('X-Forwarded-For').split(',')[0].strip()
-    elif request.headers.get('X-Real-IP'):
-        return request.headers.get('X-Real-IP')
-    else:
-        return request.remote_addr
+    # Heroku ve proxy'ler için header'ları kontrol et
+    # X-Forwarded-For: client, proxy1, proxy2
+    # İlk IP gerçek client IP'sidir
+    
+    # X-Forwarded-For header'ı kontrol et
+    x_forwarded_for = request.headers.get('X-Forwarded-For')
+    if x_forwarded_for:
+        # Virgülle ayrılmış IP listesinden ilkini al
+        ips = [ip.strip() for ip in x_forwarded_for.split(',')]
+        if ips and ips[0]:
+            return ips[0]
+    
+    # X-Real-IP header'ı kontrol et
+    x_real_ip = request.headers.get('X-Real-IP')
+    if x_real_ip:
+        return x_real_ip.strip()
+    
+    # CF-Connecting-IP (Cloudflare)
+    cf_ip = request.headers.get('CF-Connecting-IP')
+    if cf_ip:
+        return cf_ip.strip()
+    
+    # True-Client-IP (Akamai, Cloudflare)
+    true_client_ip = request.headers.get('True-Client-IP')
+    if true_client_ip:
+        return true_client_ip.strip()
+    
+    # Son çare: request.remote_addr (genelde proxy IP'si)
+    return request.remote_addr
 
 def log_request(ip_address, endpoint, method, headers, data, is_expected_ip):
     """Gelen istekleri kaydet"""
+    # Debug için tüm IP ile ilgili header'ları kaydet
+    ip_headers = {
+        'X-Forwarded-For': headers.get('X-Forwarded-For'),
+        'X-Real-IP': headers.get('X-Real-IP'),
+        'CF-Connecting-IP': headers.get('CF-Connecting-IP'),
+        'True-Client-IP': headers.get('True-Client-IP'),
+        'Remote-Addr': request.remote_addr
+    }
+    
     log_entry = {
         'timestamp': datetime.now().isoformat(),
         'ip_address': ip_address,
         'endpoint': endpoint,
         'method': method,
         'headers': dict(headers),
+        'ip_debug_headers': ip_headers,
         'data': data,
         'is_expected_ip': is_expected_ip,
         'matched_nat_ip': ip_address if is_expected_ip else None
@@ -373,6 +406,39 @@ def get_stats():
         })
     except Exception as e:
         return jsonify({'error': str(e)})
+
+@app.route('/debug/headers')
+def debug_headers():
+    """
+    Debug Headers - See All Request Headers
+    ---
+    tags:
+      - Monitoring
+    responses:
+      200:
+        description: All request headers and IP detection info
+        schema:
+          type: object
+    """
+    client_ip = get_client_ip()
+    
+    return jsonify({
+        'detected_ip': client_ip,
+        'is_expected_nat_ip': client_ip in EXPECTED_NAT_IPS,
+        'all_headers': dict(request.headers),
+        'ip_related_headers': {
+            'X-Forwarded-For': request.headers.get('X-Forwarded-For'),
+            'X-Real-IP': request.headers.get('X-Real-IP'),
+            'CF-Connecting-IP': request.headers.get('CF-Connecting-IP'),
+            'True-Client-IP': request.headers.get('True-Client-IP'),
+            'Remote-Addr': request.remote_addr
+        },
+        'request_info': {
+            'method': request.method,
+            'path': request.path,
+            'remote_addr': request.remote_addr
+        }
+    })
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
