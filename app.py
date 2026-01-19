@@ -1,10 +1,17 @@
 from flask import Flask, request, jsonify
 from flasgger import Swagger, swag_from
+from werkzeug.middleware.proxy_fix import ProxyFix
 from datetime import datetime
 import json
 import os
 
 app = Flask(__name__)
+
+# Heroku proxy'sine güven - X-Forwarded-For header'larını düzgün oku
+# x_for=1: X-Forwarded-For'dan 1 proxy
+# x_proto=1: X-Forwarded-Proto'dan 1 proxy
+# x_host=1: X-Forwarded-Host'tan 1 proxy
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 # Swagger Configuration
 swagger_config = {
