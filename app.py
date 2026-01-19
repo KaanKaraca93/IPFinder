@@ -1,9 +1,54 @@
 from flask import Flask, request, jsonify
+from flasgger import Swagger, swag_from
 from datetime import datetime
 import json
 import os
 
 app = Flask(__name__)
+
+# Swagger Configuration
+swagger_config = {
+    "headers": [],
+    "specs": [
+        {
+            "endpoint": 'apispec',
+            "route": '/apispec.json',
+            "rule_filter": lambda rule: True,
+            "model_filter": lambda tag: True,
+        }
+    ],
+    "static_url_path": "/flasgger_static",
+    "swagger_ui": True,
+    "specs_route": "/swagger/"
+}
+
+swagger_template = {
+    "swagger": "2.0",
+    "info": {
+        "title": "IP Source Tracker API",
+        "description": "API to track and verify incoming requests from Infor MT AWS NAT IPs (EU-Central-1 Frankfurt)",
+        "version": "1.0.0",
+        "contact": {
+            "name": "IP Source Tracker",
+            "url": "https://github.com/KaanKaraca93/IPFinder"
+        }
+    },
+    "host": "ipfinder-1441fde4a5a3.herokuapp.com",
+    "basePath": "/",
+    "schemes": ["https", "http"],
+    "tags": [
+        {
+            "name": "Tracking",
+            "description": "Request tracking endpoints"
+        },
+        {
+            "name": "Monitoring",
+            "description": "Logs and statistics"
+        }
+    ]
+}
+
+swagger = Swagger(app, config=swagger_config, template=swagger_template)
 
 # NAT IP'ler - Infor MT AWS (EU-Central-1 Frankfurt)
 EXPECTED_NAT_IPS = [
@@ -60,7 +105,41 @@ def log_request(ip_address, endpoint, method, headers, data, is_expected_ip):
 
 @app.route('/')
 def index():
-    """Ana sayfa - Basit bilgi"""
+    """
+    Service Information
+    ---
+    tags:
+      - Monitoring
+    responses:
+      200:
+        description: Service status and available endpoints
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: active
+            service:
+              type: string
+              example: IP Source Tracker
+            expected_nat_ips:
+              type: array
+              items:
+                type: string
+              example: ["52.58.37.0", "52.29.28.67", "18.197.50.73"]
+            endpoints:
+              type: object
+              properties:
+                webhook:
+                  type: string
+                  example: /webhook (POST/GET/PUT/DELETE)
+                logs:
+                  type: string
+                  example: /logs
+                stats:
+                  type: string
+                  example: /stats
+    """
     return jsonify({
         'status': 'active',
         'service': 'IP Source Tracker',
@@ -68,13 +147,50 @@ def index():
         'endpoints': {
             'webhook': '/webhook (POST/GET/PUT/DELETE)',
             'logs': '/logs',
-            'stats': '/stats'
+            'stats': '/stats',
+            'swagger': '/swagger/'
         }
     })
 
 @app.route('/webhook', methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])
 def webhook():
-    """Webhook endpoint - Tüm istekleri yakala"""
+    """
+    Webhook Endpoint - Track Incoming Requests
+    ---
+    tags:
+      - Tracking
+    parameters:
+      - name: body
+        in: body
+        required: false
+        description: Optional request payload
+        schema:
+          type: object
+    responses:
+      200:
+        description: Request successfully logged
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+              example: true
+            message:
+              type: string
+              example: VERIFIED: Request from expected NAT IP!
+            your_ip:
+              type: string
+              example: 52.58.37.0
+            is_expected_nat_ip:
+              type: boolean
+              example: true
+            timestamp:
+              type: string
+              example: "2026-01-19T12:34:56.789123"
+            matched_ip:
+              type: string
+              example: 52.58.37.0
+    """
     client_ip = get_client_ip()
     is_expected = client_ip in EXPECTED_NAT_IPS
     
@@ -116,7 +232,44 @@ def webhook():
 
 @app.route('/logs')
 def get_logs():
-    """Log kayıtlarını göster (en yeni önce)"""
+    """
+    Get All Request Logs
+    ---
+    tags:
+      - Monitoring
+    responses:
+      200:
+        description: List of all logged requests (newest first)
+        schema:
+          type: object
+          properties:
+            logs:
+              type: array
+              items:
+                type: object
+                properties:
+                  timestamp:
+                    type: string
+                    example: "2026-01-19T12:34:56.789123"
+                  ip_address:
+                    type: string
+                    example: "52.58.37.0"
+                  endpoint:
+                    type: string
+                    example: "/webhook"
+                  method:
+                    type: string
+                    example: "POST"
+                  is_expected_ip:
+                    type: boolean
+                    example: true
+                  matched_nat_ip:
+                    type: string
+                    example: "52.58.37.0"
+            count:
+              type: integer
+              example: 42
+    """
     if not os.path.exists(LOG_FILE):
         return jsonify({'logs': [], 'count': 0})
     
@@ -133,7 +286,50 @@ def get_logs():
 
 @app.route('/stats')
 def get_stats():
-    """İstatistikler ve karşılaştırma"""
+    """
+    Get Statistics and Comparison
+    ---
+    tags:
+      - Monitoring
+    responses:
+      200:
+        description: Detailed statistics and IP comparison
+        schema:
+          type: object
+          properties:
+            total_requests:
+              type: integer
+              example: 42
+              description: Total number of requests logged
+            expected_ip_requests:
+              type: integer
+              example: 35
+              description: Requests from expected NAT IPs
+            unexpected_ip_requests:
+              type: integer
+              example: 7
+              description: Requests from unexpected IPs
+            expected_nat_ips:
+              type: array
+              items:
+                type: string
+              example: ["52.58.37.0", "52.29.28.67", "18.197.50.73"]
+              description: List of expected Infor MT NAT IPs
+            ip_distribution:
+              type: object
+              example: {"52.58.37.0": 20, "52.29.28.67": 15, "192.168.1.1": 7}
+              description: Request count per IP address
+            comparison:
+              type: array
+              items:
+                type: string
+              example: ["✓ 52.58.37.0: 20 requests (MATCHED)", "✓ 52.29.28.67: 15 requests (MATCHED)", "✗ 18.197.50.73: 0 requests (NOT SEEN YET)"]
+              description: Comparison of expected IPs vs actual requests
+            unexpected_ips:
+              type: object
+              example: {"192.168.1.1": 7}
+              description: Requests from IPs not in the expected list
+    """
     if not os.path.exists(LOG_FILE):
         return jsonify({
             'total_requests': 0,
